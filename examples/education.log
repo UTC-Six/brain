@@ -1,0 +1,46 @@
+➜  brain git:(feature/nebula_milvus) ✗ go run ./examples/main.go
+{"level":"info","ts":1764244698.3596601,"caller":"milvus/client.go:77","msg":"milvus client connected","address":"127.0.0.1:19530"}
+=== 初始化 Schema ===
+{"level":"info","ts":1764244698.3721972,"caller":"education/education.go:124","msg":"education schema initialized"}
+{"level":"info","ts":1764244698.3722482,"caller":"examples/main.go:77","msg":"Schema initialized successfully"}
+
+=== 创建学生、课程、知识点 ===
+{"level":"info","ts":1764244703.392925,"caller":"nebula/vertex.go:68","msg":"vertex created","tag":"student","vid":"student_001"}
+{"level":"info","ts":1764244703.393138,"caller":"examples/main.go:92","msg":"Student created: 张三"}
+{"level":"info","ts":1764244703.397435,"caller":"nebula/vertex.go:68","msg":"vertex created","tag":"course","vid":"course_001"}
+{"level":"info","ts":1764244703.397537,"caller":"examples/main.go:105","msg":"Course created: 高中数学\n"}
+{"level":"info","ts":1764244703.4001222,"caller":"nebula/vertex.go:68","msg":"vertex created","tag":"knowledge_point","vid":"kp_001"}
+{"level":"info","ts":1764244703.40017,"caller":"examples/main.go:118","msg":"Knowledge point created: 二次函数\n"}
+
+=== 记录学习情况 ===
+{"level":"info","ts":1764244703.404055,"caller":"nebula/edge.go:85","msg":"edge created","type":"learns","src":"student_001","dst":"kp_001"}
+{"level":"info","ts":1764244703.4041018,"caller":"examples/main.go:134","msg":"Learning record created"}
+
+=== 查询学生学习情况 ===
+Found 1 learning records
+  Knowledge: kp_001, Score: 85.50, Mastery: 4
+
+=== 分析学生学习能力 ===
+Student: student_001
+  Total Knowledge: 1
+  Average Score: 85.50
+  Average Mastery: 4.00
+  Total Study Time: 120 minutes
+  Mastered Count: 1
+  Weak Knowledge IDs: []
+
+=== 初始化向量集合 ===
+{"level":"info","ts":1764244703.43365,"caller":"education/education.go:318","msg":"collection already exists","collection":"learning_content"}
+Vector collection initialized: learning_content (dim=128)
+
+=== 插入学习内容向量 ===
+{"level":"info","ts":1764244703.547874,"caller":"milvus/vector.go:132","msg":"vectors inserted","collection":"learning_content","count":2,"ids_count":2}
+Inserted 2 learning contents, IDs: [content_001 content_002]
+
+=== 向量相似度搜索 ===
+{"level":"info","ts":1764244703.5683498,"caller":"milvus/vector.go:186","msg":"vectors searched","collection":"learning_content","results_count":0}
+Found 0 similar contents
+
+=== 示例完成 ===
+{"level":"info","ts":1764244703.568479,"caller":"milvus/client.go:122","msg":"milvus client closed"}
+{"level":"info","ts":1764244703.5685272,"caller":"nebula/client.go:153","msg":"nebula client closed"}

@@ -178,6 +178,19 @@ services:
     ports:
       - "7001:7001"  # Studio Web 界面
 
+  # ------------------------------
+  # Nebula Console：命令行客户端
+  # ------------------------------
+  nebula-console:
+    image: vesoft/nebula-console:v3.6.0
+    container_name: nebula-console
+    restart: always
+    depends_on:
+      - nebula-graphd
+    networks:
+      - milvus-network
+    entrypoint: ["/bin/sh", "-c", "tail -f /dev/null"]
+
 # ------------------------------
 # 统一网络：确保所有服务互通
 # ------------------------------

@@ -111,7 +111,7 @@ func (s *EducationService) InitializeSchema(ctx context.Context) error {
 	edges := []string{
 		"CREATE EDGE IF NOT EXISTS studies(student_id string, course_id string, enroll_time timestamp, progress double)",
 		"CREATE EDGE IF NOT EXISTS learns(student_id string, knowledge_id string, score double, mastery_level int, study_duration int, last_study_time timestamp)",
-		"CREATE EDGE IF NOT EXISTS contains(course_id string, knowledge_id string, order int)",
+		"CREATE EDGE IF NOT EXISTS contains(course_id string, knowledge_id string, order_index int)",
 		"CREATE EDGE IF NOT EXISTS prerequisite(knowledge_id1 string, knowledge_id2 string)",
 	}
 
@@ -398,7 +398,20 @@ func (s *EducationService) InsertLearningContent(ctx context.Context, collection
 
 		// 添加 metadata 到动态字段
 		for k, v := range content.Metadata {
-			item[k] = v
+			switch val := v.(type) {
+			case float64:
+				item[k] = val
+			case float32:
+				item[k] = float64(val)
+			case int:
+				item[k] = float64(val)
+			case int32:
+				item[k] = float64(val)
+			case int64:
+				item[k] = float64(val)
+			default:
+				item[k] = v
+			}
 		}
 
 		data = append(data, item)
