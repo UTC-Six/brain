@@ -1,19 +1,19 @@
 # Brain 数据库封装配置
 
-# Nebula Graph 配置
+# Nebula Graph 配置（与 docker-compose 中的 nebula-graphd 对应）
 nebula:
   addresses:
-    - "127.0.0.1:9669"
+    - "127.0.0.1:9669"  # 若在宿主机访问，可改用 127.0.0.1
   username: "root"
-  password: "password"
-  space: "brain"  # 图空间名称
+  password: ""              # Nebula 默认未启用密码
+  space: "brain"            # 图空间名称
   timeout: 10s
-  max_conn: 10    # 最大连接数
-  min_conn: 2     # 最小连接数
+  max_conn: 10              # 最大连接数
+  min_conn: 2               # 最小连接数
 
 # Milvus 配置
 milvus:
-  host: "127.0.0.1"
+  host: "127.0.0.1"  # 若在宿主机访问，可改用 127.0.0.1
   port: 19530
   username: ""      # 可选，如果 Milvus 启用了认证
   password: ""      # 可选

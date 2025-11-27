@@ -17,6 +17,7 @@ type EducationService struct {
 	nebulaClient *nebula.Client
 	milvusClient *milvus.Client
 	logger       *zap.Logger
+	space        string
 
 	// Nebula 服务
 	vertexService *nebula.VertexService
@@ -33,6 +34,7 @@ func NewEducationService(
 	nebulaClient *nebula.Client,
 	milvusClient *milvus.Client,
 	logger *zap.Logger,
+	space string,
 ) *EducationService {
 	return &EducationService{
 		nebulaClient:      nebulaClient,
@@ -43,6 +45,7 @@ func NewEducationService(
 		collectionService: milvus.NewCollectionService(milvusClient, logger),
 		vectorService:     milvus.NewVectorService(milvusClient, logger),
 		indexService:      milvus.NewIndexService(milvusClient, logger),
+		space:             space,
 	}
 }
 
@@ -87,6 +90,10 @@ type LearningRecord struct {
 
 // InitializeSchema 初始化图数据库 Schema
 func (s *EducationService) InitializeSchema(ctx context.Context) error {
+	if err := s.ensureSpace(ctx); err != nil {
+		return err
+	}
+
 	// 创建 Tag（顶点类型）
 	tags := []string{
 		"CREATE TAG IF NOT EXISTS student(id string, name string, age int, grade string, create_at timestamp)",
@@ -495,4 +502,60 @@ type LearningAbility struct {
 	TotalStudyTime   int // 分钟
 	MasteredCount    int
 	WeakKnowledgeIDs []string
+}
+
+// ensureSpace creates the Nebula space if needed and selects it for current session.
+func (s *EducationService) ensureSpace(ctx context.Context) error {
+	if s.space == "" {
+		return nil
+	}
+
+	// 如果空间已存在，直接切换
+	exists, err := s.spaceExists(ctx, s.space)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		createStmt := fmt.Sprintf(`CREATE SPACE IF NOT EXISTS %s (partition_num=1, replica_factor=1, vid_type=FIXED_STRING(128))`, s.space)
+		if _, err := s.nebulaClient.Execute(ctx, createStmt); err != nil {
+			return fmt.Errorf("create space %s failed: %w", s.space, err)
+		}
+
+	}
+
+	if err := s.useSpace(ctx, s.space); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *EducationService) spaceExists(ctx context.Context, space string) (bool, error) {
+	result, err := s.nebulaClient.Execute(ctx, "SHOW SPACES")
+	if err != nil {
+		return false, fmt.Errorf("show spaces failed: %w", err)
+	}
+
+	for i := 0; i < result.GetRowSize(); i++ {
+		row, err := result.GetRowValuesByIndex(i)
+		if err != nil {
+			continue
+		}
+		name, err := row.GetValueByColName("Name")
+		if err != nil {
+			continue
+		}
+		if n, err := name.AsString(); err == nil && n == space {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (s *EducationService) useSpace(ctx context.Context, space string) error {
+	if _, err := s.nebulaClient.Execute(ctx, fmt.Sprintf("USE %s", space)); err != nil {
+		return fmt.Errorf("use space %s failed: %w", space, err)
+	}
+	return nil
 }

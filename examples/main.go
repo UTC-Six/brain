@@ -64,7 +64,7 @@ func main() {
 	defer milvusClient.Close()
 
 	// 创建教育服务
-	eduService := education.NewEducationService(nebulaClient, milvusClient, logger)
+	eduService := education.NewEducationService(nebulaClient, milvusClient, logger, cfg.Nebula.Space)
 
 	ctx := context.Background()
 
@@ -72,9 +72,9 @@ func main() {
 	fmt.Println("=== 初始化 Schema ===")
 	if err := eduService.InitializeSchema(ctx); err != nil {
 		logger.Error("Failed to initialize schema", zap.Error(err))
-	} else {
-		fmt.Println("Schema initialized successfully")
+		return
 	}
+	logger.Info("Schema initialized successfully")
 
 	// 示例 2: 创建学生、课程、知识点
 	fmt.Println("\n=== 创建学生、课程、知识点 ===")
@@ -87,9 +87,9 @@ func main() {
 	}
 	if err := eduService.CreateStudent(ctx, student); err != nil {
 		logger.Error("Failed to create student", zap.Error(err))
-	} else {
-		fmt.Printf("Student created: %s\n", student.Name)
+		return
 	}
+	logger.Info(fmt.Sprintf("Student created: %s", student.Name))
 
 	course := education.Course{
 		ID:       "course_001",
@@ -100,9 +100,9 @@ func main() {
 	}
 	if err := eduService.CreateCourse(ctx, course); err != nil {
 		logger.Error("Failed to create course", zap.Error(err))
-	} else {
-		fmt.Printf("Course created: %s\n", course.Name)
+		return
 	}
+	logger.Info(fmt.Sprintf("Course created: %s\n", course.Name))
 
 	knowledgePoint := education.KnowledgePoint{
 		ID:          "kp_001",
@@ -113,9 +113,9 @@ func main() {
 	}
 	if err := eduService.CreateKnowledgePoint(ctx, knowledgePoint); err != nil {
 		logger.Error("Failed to create knowledge point", zap.Error(err))
-	} else {
-		fmt.Printf("Knowledge point created: %s\n", knowledgePoint.Name)
+		return
 	}
+	logger.Info(fmt.Sprintf("Knowledge point created: %s\n", knowledgePoint.Name))
 
 	// 示例 3: 记录学习情况
 	fmt.Println("\n=== 记录学习情况 ===")
@@ -129,15 +129,16 @@ func main() {
 	}
 	if err := eduService.RecordLearning(ctx, learningRecord); err != nil {
 		logger.Error("Failed to record learning", zap.Error(err))
-	} else {
-		fmt.Println("Learning record created")
+		return
 	}
+	logger.Info("Learning record created")
 
 	// 示例 4: 查询学生学习情况
 	fmt.Println("\n=== 查询学生学习情况 ===")
 	records, err := eduService.GetStudentKnowledgeMastery(ctx, "student_001")
 	if err != nil {
 		logger.Error("Failed to get student knowledge mastery", zap.Error(err))
+		return
 	} else {
 		fmt.Printf("Found %d learning records\n", len(records))
 		for _, record := range records {
@@ -151,6 +152,7 @@ func main() {
 	ability, err := eduService.GetLearningAbility(ctx, "student_001")
 	if err != nil {
 		logger.Error("Failed to get learning ability", zap.Error(err))
+		return
 	} else {
 		fmt.Printf("Student: %s\n", ability.StudentID)
 		fmt.Printf("  Total Knowledge: %d\n", ability.TotalKnowledge)
@@ -167,6 +169,7 @@ func main() {
 	dim := 128 // 向量维度（实际使用时应该与 embedding 模型维度一致）
 	if err := eduService.InitializeVectorCollection(ctx, collectionName, dim); err != nil {
 		logger.Error("Failed to initialize vector collection", zap.Error(err))
+		return
 	} else {
 		fmt.Printf("Vector collection initialized: %s (dim=%d)\n", collectionName, dim)
 	}
@@ -203,6 +206,7 @@ func main() {
 	ids, err := eduService.InsertLearningContent(ctx, collectionName, contents)
 	if err != nil {
 		logger.Error("Failed to insert learning content", zap.Error(err))
+		return
 	} else {
 		fmt.Printf("Inserted %d learning contents, IDs: %v\n", ids.Len(), columnValues(ids))
 	}
@@ -218,6 +222,7 @@ func main() {
 	results, err := eduService.SearchSimilarContent(ctx, collectionName, queryVector, 5, filters)
 	if err != nil {
 		logger.Error("Failed to search similar content", zap.Error(err))
+		return
 	} else {
 		fmt.Printf("Found %d similar contents\n", len(results))
 		for i, result := range results {
