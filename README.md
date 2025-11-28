@@ -119,7 +119,7 @@ go run examples/main.go
 
 **适用场景：**
 - 学生-课程-知识点关系图谱
-- 知识点先修关系（prerequisite）
+- 知识点先修关系(预习)（prerequisite）
 - 学习路径推荐
 - 社交网络分析
 
