@@ -669,11 +669,251 @@ filter = "student_id == 'student_001'")
 4. **缓存策略**：对常用查询结果进行缓存，提高响应速度
 5. **数据一致性**：确保 Nebula 和 Milvus 数据的一致性
 
-## 八、下一步工作
+## 八、代码实现
 
-1. 实现 Schema 初始化代码
-2. 实现数据写入服务
-3. 实现查询服务（Nebula + Milvus）
-4. 实现 RAG 召回服务
-5. 实现学生画像生成服务（整合数据 + 大模型）
+### 8.1 已实现的功能
+
+✅ **Schema 初始化服务** (`schema.go`)
+- 实现了 Nebula Graph 的 11 个 Tag 和 15+ 个 Edge 的自动创建
+- 实现了 Milvus 的 4 个向量集合的创建和索引配置
+- 支持自动创建和切换图空间
+
+✅ **数据写入服务** (`writer.go`)
+- 实现了学生、会话、文章、问答、学习行为、MBTI 测试等数据的写入
+- 支持 Nebula Graph 和 Milvus 的双写机制
+- 自动处理向量生成和元数据规范化
+
+✅ **查询服务** (`query.go`)
+- 实现了 8 个维度的查询功能：
+  - 基础身份信息查询
+  - 学习能力查询
+  - 学科能力查询
+  - 性格特征查询
+  - 学习习惯查询
+  - 社会关系和背景查询
+  - 兴趣爱好查询
+- 所有查询都基于 Nebula Graph 的 nGQL 语句
+
+✅ **RAG 召回服务** (`rag.go`)
+- 实现了会话、文章、问答、学习行为的向量召回
+- 支持语义相似度搜索
+- 支持按学生ID过滤
+- 注意：字段解析部分已简化，实际使用时需要根据 Milvus SDK 的实际返回结构调整
+
+✅ **学生画像生成服务** (`profile.go`)
+- 整合所有数据生成完整学生画像
+- 支持大模型增强分析
+- 自动构建多维度画像报告
+
+✅ **主服务整合** (`service.go`)
+- 统一的服务入口，整合所有功能模块
+- 提供便捷的服务获取方法
+
+✅ **数据模型定义** (`models.go`)
+- 完整的 Nebula Graph 数据模型（顶点和边）
+- 完整的 Milvus 向量数据模型
+- 完整的查询结果模型
+
+✅ **示例代码** (`example/main.go`)
+- 完整的使用示例
+- 包含 Schema 初始化、数据写入、查询、RAG 召回、画像生成的完整流程
+
+### 8.2 文件结构
+
+```
+kingclub_examples/
+├── README.md           # 本文档
+├── models.go           # 数据模型定义
+├── schema.go           # Schema 初始化服务
+├── writer.go           # 数据写入服务
+├── query.go            # 查询服务
+├── rag.go              # RAG 召回服务
+├── profile.go          # 学生画像生成服务
+├── service.go          # 主服务整合
+└── example/
+    └── main.go         # 使用示例
+```
+
+### 8.3 快速开始
+
+#### 1. 初始化服务
+
+```go
+import (
+    "github.com/UTC-Six/brain/kingclub_examples"
+    "github.com/UTC-Six/brain/internal/milvus"
+    "github.com/UTC-Six/brain/internal/nebula"
+)
+
+// 创建服务配置
+config := kingclub.ServiceConfig{
+    NebulaClient:  nebulaClient,
+    MilvusClient:  milvusClient,
+    Logger:        logger,
+    Space:         "kingclub",
+    EmbeddingFunc: embeddingFunc, // 需要提供向量生成函数
+    LLMFunc:       llmFunc,       // 需要提供大模型调用函数
+}
+
+// 创建服务
+service := kingclub.NewKingClubService(config)
+defer service.Close()
+```
+
+#### 2. 初始化 Schema
+
+```go
+ctx := context.Background()
+if err := service.InitializeSchema(ctx); err != nil {
+    log.Fatal(err)
+}
+```
+
+#### 3. 写入数据
+
+```go
+writer := service.GetWriterService()
+
+// 写入学生
+student := &kingclub.Student{
+    ID:   "student_001",
+    Name: "张三",
+    // ... 其他字段
+}
+writer.WriteStudent(ctx, student)
+
+// 写入会话（会自动生成向量并写入 Milvus）
+conversation := &kingclub.Conversation{...}
+messages := []kingclub.ConversationVector{...}
+writer.WriteConversation(ctx, conversation, messages)
+```
+
+#### 4. 查询数据
+
+```go
+queryService := service.GetQueryService()
+
+// 获取基础信息
+basicInfo, _ := queryService.GetStudentBasicInfo(ctx, "student_001")
+
+// 获取学习能力
+learningAbility, _ := queryService.GetLearningAbility(ctx, "student_001")
+
+// 获取学科能力
+subjectAbility, _ := queryService.GetSubjectAbility(ctx, "student_001")
+```
+
+#### 5. RAG 召回
+
+```go
+ragService := service.GetRAGService()
+
+// 召回相关会话
+conversations, _ := ragService.RecallConversations(
+    ctx, 
+    "学生的学习状态", 
+    "student_001", 
+    10,
+)
+
+// 召回相关文章
+articles, _ := ragService.RecallArticles(
+    ctx,
+    "学生的写作能力",
+    "student_001",
+    5,
+)
+```
+
+#### 6. 生成学生画像
+
+```go
+profileService := service.GetProfileService()
+
+// 生成完整画像
+profile, _ := profileService.GenerateStudentProfile(ctx, "student_001")
+
+// profile 包含所有维度的信息：
+// - BasicInfo: 基础身份信息
+// - PhysicalCondition: 身体状况
+// - LearningAbility: 学习能力
+// - SubjectAbility: 学科能力
+// - Personality: 性格特征
+// - LearningHabits: 学习习惯
+// - SocialBackground: 社会关系和背景
+// - Interests: 兴趣爱好
+```
+
+### 8.4 依赖要求
+
+#### 必需的外部函数
+
+1. **Embedding 函数**：用于生成文本向量
+   ```go
+   func embeddingFunc(text string) ([]float32, error) {
+       // 调用 embedding 模型（如 text2vec-chinese）
+       // 返回 768 维向量
+   }
+   ```
+
+2. **大模型调用函数**：用于生成分析报告
+   ```go
+   func llmFunc(prompt string) (string, error) {
+       // 调用大模型 API（如 OpenAI、Claude 等）
+       // 返回分析结果
+   }
+   ```
+
+#### 推荐实现
+
+- **Embedding 模型**：使用 text2vec-chinese 或类似的中文 embedding 模型
+- **大模型**：使用 OpenAI GPT-4、Claude 或其他支持长文本的大模型
+
+### 8.5 注意事项
+
+1. **向量维度**：当前实现中会话、文章、问答向量使用 768 维，学习行为向量使用 128 维。如果使用不同的 embedding 模型，需要调整 `schema.go` 中的维度配置。
+
+2. **字段解析**：`rag.go` 中的字段解析部分已简化，实际使用时需要根据 Milvus SDK 的实际返回结构调整。Milvus 的 `SearchResult.Fields` 是 `[]entity.Column` 类型，需要根据 `OutputFields` 的顺序来匹配字段。
+
+3. **数据一致性**：确保 Nebula Graph 和 Milvus 的数据一致性。建议使用事务或事件驱动机制来保证双写的一致性。
+
+4. **性能优化**：
+   - 批量写入数据时，建议使用批量接口
+   - 查询时合理使用索引
+   - 对常用查询结果进行缓存
+
+5. **错误处理**：所有服务方法都返回错误，建议在生产环境中进行适当的错误处理和重试机制。
+
+### 8.6 扩展建议
+
+1. **完善 RAG 字段解析**：根据 Milvus SDK 的实际返回结构，完善 `rag.go` 中的字段解析逻辑。
+
+2. **添加批量操作**：为写入服务添加批量写入接口，提高性能。
+
+3. **添加缓存层**：对常用查询结果添加缓存，减少数据库查询。
+
+4. **添加数据校验**：在写入数据前添加数据校验逻辑。
+
+5. **添加监控和日志**：添加更详细的监控指标和日志记录。
+
+6. **支持数据更新和删除**：添加数据更新和删除功能。
+
+7. **支持复杂查询**：添加更复杂的图查询和向量查询组合。
+
+### 8.7 运行示例
+
+```bash
+# 进入示例目录
+cd kingclub_examples/example
+
+# 运行示例（需要先配置 config/config.yaml）
+go run main.go
+```
+
+示例会执行以下步骤：
+1. 初始化 Schema（Nebula + Milvus）
+2. 写入示例数据（学生、会话等）
+3. 查询学生信息
+4. RAG 召回相关数据
+5. 生成学生画像
 
